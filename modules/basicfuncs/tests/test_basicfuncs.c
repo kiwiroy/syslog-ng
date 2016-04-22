@@ -266,6 +266,49 @@ test_tf_template(void)
   assert_template_failure("foo $(template unknown) bar", "Unknown template function or template \"unknown\"");
 }
 
+static void
+test_list_funcs(void)
+{
+  assert_template_format("$(list-concat)", "");
+  assert_template_format("$(list-concat foo bar baz)", "foo,bar,baz");
+  assert_template_format("$(list-concat foo bar baz '')", "foo,bar,baz");
+  assert_template_format("$(list-concat foo $HOST $PROGRAM $PID bar)", "foo,bzorp,syslog-ng,23323,bar");
+  assert_template_format("$(list-concat foo '$HOST,$PROGRAM,$PID' bar)", "foo,bzorp,syslog-ng,23323,bar");
+  assert_template_format("$(list-concat foo '$HOST,$PROGRAM,$PID,' bar)", "foo,bzorp,syslog-ng,23323,bar");
+
+  assert_template_format("$(list-append)", "");
+  assert_template_format("$(list-append '' foo)", "foo");
+  assert_template_format("$(list-append '' foo bar)", "foo,bar");
+  assert_template_format("$(list-append '' foo bar baz)", "foo,bar,baz");
+  assert_template_format("$(list-append foo,bar,baz 'x')", "foo,bar,baz,x");
+  assert_template_format("$(list-append foo,bar,baz '')", "foo,bar,baz,''");
+  assert_template_format("$(list-append foo,bar,baz 'xxx,')", "foo,bar,baz,\"xxx,\"");
+  assert_template_format("$(list-append foo,bar,baz 'a\tb')", "foo,bar,baz,\"a\\tb\"");
+
+  assert_template_format("$(list-head)", "");
+  assert_template_format("$(list-head foo)", "foo");
+  assert_template_format("$(list-head foo,)", "foo");
+  assert_template_format("$(list-head foo,bar)", "foo");
+  assert_template_format("$(list-head foo,bar,baz)", "foo");
+  assert_template_format("$(list-head ,bar,baz)", "bar");
+
+  assert_template_format("$(list-head foo bar)", "foo");
+  assert_template_format("$(list-head foo bar baz)", "foo");
+  assert_template_format("$(list-head '' bar baz)", "bar");
+
+  assert_template_format("$(list-tail)", "");
+  assert_template_format("$(list-tail foo)", "");
+  assert_template_format("$(list-tail foo,bar)", "bar");
+  assert_template_format("$(list-tail foo,)", "");
+  assert_template_format("$(list-tail ,bar)", "");
+  assert_template_format("$(list-tail foo,bar,baz)", "bar,baz");
+  assert_template_format("$(list-tail foo bar baz)", "bar,baz");
+  assert_template_format("$(list-tail foo,bar baz bad)", "bar,baz,bad");
+  assert_template_format("$(list-tail foo,bar,xxx, baz bad)", "bar,xxx,baz,bad");
+
+  assert_template_format("$(list-count foo,bar,xxx, baz bad)", "5");
+}
+
 int
 main(int argc G_GNUC_UNUSED, char *argv[] G_GNUC_UNUSED)
 {
@@ -280,6 +323,7 @@ main(int argc G_GNUC_UNUSED, char *argv[] G_GNUC_UNUSED)
   test_numeric_aggregate_funcs();
   test_misc_funcs();
   test_tf_template();
+  test_list_funcs();
 
   deinit_template_tests();
   app_shutdown();
