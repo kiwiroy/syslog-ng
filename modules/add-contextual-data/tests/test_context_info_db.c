@@ -27,6 +27,24 @@
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
+#if defined(__APPLE__) || defined(BSD)
+typedef struct {
+  char* buffer;
+  fpos_t pos;
+  size_t size;
+} context_io_mem_t;
+
+static int readfn(void* context, char* buf, int size)
+{
+  context_io_mem_t* mem = (context_io_mem_t*)context;
+  if (size + mem->pos > mem->size)
+    size = mem->size - mem->pos;
+  memcpy(buf, mem->buffer + mem->pos, size);
+  mem->pos += size;
+  return size;
+}
+#endif /* defined(__APPLE__) || defined(BSD) */
+
 static void
 _count_records(gpointer arg, const ContextualDataRecord *record)
 {
@@ -194,7 +212,20 @@ static void
 _assert_import_csv_with_single_selector(gchar *csv_content, gchar *selector_to_check,
                                         TestNVPair *expected_nvpairs, gsize expected_nvpairs_size)
 {
+#if _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L || defined(__APPLE__) || defined(BSD)
+  // this is only supported by glibc
+#if _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L
   FILE *fp = fmemopen(csv_content, strlen(csv_content) + 1, "r");
+#else
+  context_io_mem_t mem = {
+    .size   = strlen(csv_content) + 1,
+    .pos    = 0,
+    .buffer = (char*)csv_content,
+  };
+  FILE *fp = funopen(&mem, readfn, NULL, NULL, NULL);
+#endif /* _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L */
+
+#endif /* _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L || defined(__APPLE__) || defined(BSD) */
   ContextInfoDB *db = context_info_db_new();
   ContextualDataRecordScanner *scanner =
     create_contextual_data_record_scanner_by_type("csv");
@@ -234,7 +265,21 @@ Test(add_contextual_data, test_import_with_valid_csv)
   gchar csv_content[] = "selector1,name1,value1\n"
                         "selector1,name1.1,value1.1\n"
                         "selector2,name2,value2\n" "selector3,name3,value3";
-  FILE *fp = fmemopen(csv_content, sizeof(csv_content), "r");
+#if _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L || defined(__APPLE__) || defined(BSD)
+  // this is only supported by glibc
+#if _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L
+  FILE *fp = fmemopen(csv_content, strlen(csv_content) + 1, "r");
+#else
+  context_io_mem_t mem = {
+    .size   = strlen(csv_content) + 1,
+    .pos    = 0,
+    .buffer = (char*)csv_content,
+  };
+  FILE *fp = funopen(&mem, readfn, NULL, NULL, NULL);
+#endif /* _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L */
+
+#endif /* _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L || defined(__APPLE__) || defined(BSD) */
+
   ContextInfoDB *db = context_info_db_new();
   ContextualDataRecordScanner *scanner =
     create_contextual_data_record_scanner_by_type("csv");
@@ -312,7 +357,20 @@ Test(add_contextual_data, test_import_from_csv_with_escaped_double_quote,
 Test(add_contextual_data, test_import_with_invalid_csv_content)
 {
   gchar csv_content[] = "xxx";
+#if _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L || defined(__APPLE__) || defined(BSD)
+  // this is only supported by glibc
+#if _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L
   FILE *fp = fmemopen(csv_content, strlen(csv_content) + 1, "r");
+#else
+  context_io_mem_t mem = {
+    .size   = strlen(csv_content) + 1,
+    .pos    = 0,
+    .buffer = (char*)csv_content,
+  };
+  FILE *fp = funopen(&mem, readfn, NULL, NULL, NULL);
+#endif /* _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L */
+
+#endif /* _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L || defined(__APPLE__) || defined(BSD) */
   ContextInfoDB *db = context_info_db_new();
 
   ContextualDataRecordScanner *scanner =
@@ -334,7 +392,21 @@ Test(add_contextual_data, test_import_with_csv_contains_invalid_line)
 {
   gchar csv_content[] = "selector1,name1,value1\n"
                         ",,value1.1\n";
+#if _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L || defined(__APPLE__) || defined(BSD)
+  // this is only supported by glibc
+#if _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L
   FILE *fp = fmemopen(csv_content, strlen(csv_content) + 1, "r");
+#else
+  context_io_mem_t mem = {
+    .size   = strlen(csv_content) + 1,
+    .pos    = 0,
+    .buffer = (char*)csv_content,
+  };
+  FILE *fp = funopen(&mem, readfn, NULL, NULL, NULL);
+#endif /* _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L */
+
+#endif /* _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L || defined(__APPLE__) || defined(BSD) */
+
   ContextInfoDB *db = context_info_db_new();
 
   ContextualDataRecordScanner *scanner =
